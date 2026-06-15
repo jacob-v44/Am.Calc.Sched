@@ -27,7 +27,10 @@ import {
   Calendar, 
   CreditCard,
   HelpCircle,
-  TrendingDown
+  TrendingDown,
+  Shield,
+  Building,
+  Layers
 } from 'lucide-react';
 
 export default function App() {
@@ -54,6 +57,15 @@ export default function App() {
     loanTerm: '',
     monthlyPayment: '',
   });
+
+  // Feature 1: Monthly supplementary expenses states (Tax & Insurance per year)
+  const [propertyTaxesYearly, setPropertyTaxesYearly] = useState<string>('');
+  const [insuranceYearly, setInsuranceYearly] = useState<string>('');
+
+  // Feature 2: Multi-unit property manager states
+  const [numUnits, setNumUnits] = useState<string>('4');
+  const [desiredProfitValue, setDesiredProfitValue] = useState<string>('');
+  const [profitType, setProfitType] = useState<'fixed' | 'percent'>('fixed');
 
   // Load theme side-effect
   useEffect(() => {
@@ -92,38 +104,70 @@ export default function App() {
     return null;
   }, [solved]);
 
-  // Handles updating a single input field
-  const handleInputChange = (key: keyof LoanInputs, rawValue: string) => {
-    // Basic filter to prevent non-numeric characters except decimals, commas and percentiles
+  // Numeric text filtering helper to keep values clean & valid
+  const handleNumericFilter = (rawValue: string) => {
     let cleanVal = rawValue.replace(/[^\d.]/g, '');
-    
-    // Ensure only one decimal point in numbers
     const parts = cleanVal.split('.');
     if (parts.length > 2) {
       cleanVal = parts[0] + '.' + parts.slice(1).join('');
     }
+    return cleanVal;
+  };
 
+  // Handles updating a single core loan input field
+  const handleInputChange = (key: keyof LoanInputs, rawValue: string) => {
+    const cleanVal = handleNumericFilter(rawValue);
     setInputs(prev => ({
       ...prev,
       [key]: cleanVal
     }));
   };
 
-  // Pre-load the user's specific MVP example
+  // Feature 1 Calculations: Property Taxes & Insurance
+  const taxYearlyNum = parseFloat(propertyTaxesYearly) || 0;
+  const insYearlyNum = parseFloat(insuranceYearly) || 0;
+
+  const taxMonthly = taxYearlyNum / 12;
+  const insuranceMonthly = insYearlyNum / 12;
+
+  const mortgagePayment = solved.monthlyPayment || 0;
+  const totalMonthlyCost = mortgagePayment + taxMonthly + insuranceMonthly;
+
+  // Feature 2 Calculations: Multi-unit Property Analytics
+  const unitsCount = Math.max(1, parseInt(numUnits) || 1);
+  const profitVal = parseFloat(desiredProfitValue) || 0;
+
+  const desiredMonthlyProfit = useMemo(() => {
+    if (profitType === 'fixed') {
+      return profitVal;
+    } else {
+      return totalMonthlyCost * (profitVal / 100);
+    }
+  }, [profitType, profitVal, totalMonthlyCost]);
+
+  const requiredTotalRent = totalMonthlyCost + desiredMonthlyProfit;
+  const requiredRentPerUnit = requiredTotalRent / unitsCount;
+
+  // Pre-load a comprehensive multi-unit real estate example
   const loadExample = () => {
     setInputs({
-      purchasePrice: '420000',
+      purchasePrice: '1420000',
       downPaymentPct: '20',
       downPaymentAmt: '',
       loanAmount: '',
-      interestRate: '6',
+      interestRate: '6.5',
       loanTerm: '30',
       monthlyPayment: '',
     });
+    setPropertyTaxesYearly('6000');
+    setInsuranceYearly('2400');
+    setNumUnits('4');
+    setDesiredProfitValue('2000');
+    setProfitType('fixed');
     setActiveTab('calculator');
   };
 
-  // Reset/Clear everything back to empty
+  // Reset/Clear everything back to defaults
   const resetForm = () => {
     setInputs({
       purchasePrice: '',
@@ -134,6 +178,11 @@ export default function App() {
       loanTerm: '',
       monthlyPayment: '',
     });
+    setPropertyTaxesYearly('');
+    setInsuranceYearly('');
+    setNumUnits('1');
+    setDesiredProfitValue('');
+    setProfitType('fixed');
     setActiveTab('calculator');
   };
 
@@ -308,8 +357,11 @@ export default function App() {
         {/* View Layout Tabs Condition */}
         {activeTab === 'calculator' || !solved.isFullySolved ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Input fields panel - occupies Left Col */}
-            <div className="lg:col-span-5 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-6 shadow-xs flex flex-col gap-6">
+            {/* Left Column containing three input panels: Loan, Expenses, Property Management */}
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              
+              {/* Card 1: Core Loan Details */}
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-6 shadow-xs flex flex-col gap-6">
               <div>
                 <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                   1. Enter Loan Details
@@ -509,6 +561,163 @@ export default function App() {
               </div>
             </div>
 
+            {/* Card 2: Annual Property Taxes & Insurance (Feature 1) */}
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-6 shadow-xs flex flex-col gap-6">
+                <div>
+                  <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-indigo-500" />
+                    2. Taxes &amp; Insurance Expenses
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-sans">
+                    Add annual holding costs to compute the fully comprehensive monthly cost.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-4 font-mono">
+                  {/* Property Taxes per year */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider font-sans">
+                      Property Taxes (Yearly)
+                    </span>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 text-zinc-400"><DollarSign className="w-3.5 h-3.5" /></span>
+                      <input
+                        id="input-property-taxes-yearly"
+                        type="text"
+                        className="w-full pl-8 pr-20 py-2.5 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-800 dark:text-zinc-200 text-sm font-semibold rounded-xl border border-zinc-200 dark:border-zinc-800 outline-none transition-all hover:border-zinc-350 dark:hover:border-zinc-700 focus:border-indigo-500"
+                        placeholder="0.00"
+                        value={propertyTaxesYearly}
+                        onChange={(e) => setPropertyTaxesYearly(handleNumericFilter(e.target.value))}
+                      />
+                      {taxYearlyNum > 0 && (
+                        <span className="absolute right-3 text-[10px] text-zinc-500 dark:text-zinc-400 font-sans font-semibold">
+                          {formatDollar(taxMonthly)}/mo
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-550 font-sans mt-0.5 font-normal">
+                      Yearly taxes divided by 12. E.g., $6,000/yr = $500/mo.
+                    </p>
+                  </div>
+
+                  {/* Insurance per year */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider font-sans">
+                      Home Insurance (Yearly)
+                    </span>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 text-zinc-400"><DollarSign className="w-3.5 h-3.5" /></span>
+                      <input
+                        id="input-insurance-yearly"
+                        type="text"
+                        className="w-full pl-8 pr-20 py-2.5 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-800 dark:text-zinc-200 text-sm font-semibold rounded-xl border border-zinc-200 dark:border-zinc-800 outline-none transition-all hover:border-zinc-350 dark:hover:border-zinc-700 focus:border-indigo-500"
+                        placeholder="0.00"
+                        value={insuranceYearly}
+                        onChange={(e) => setInsuranceYearly(handleNumericFilter(e.target.value))}
+                      />
+                      {insYearlyNum > 0 && (
+                        <span className="absolute right-3 text-[10px] text-zinc-500 dark:text-zinc-400 font-sans font-semibold">
+                          {formatDollar(insuranceMonthly)}/mo
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-555 font-sans mt-0.5 font-normal">
+                      Yearly homeowners insurance divided by 12. E.g., $2,400/yr = $200/mo.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Multi-Unit Property Planner (Feature 2) */}
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-6 shadow-xs flex flex-col gap-6">
+                <div>
+                  <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Building className="w-4 h-4 text-indigo-500" />
+                    3. Multi-Unit Property Planner
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-sans">
+                    Calculate key rentals to cover total monthly cost and achieve set profit margin goals.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-4 font-mono">
+                  {/* Number of Units */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider font-sans">
+                      Number of Units
+                    </span>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 text-zinc-400"><Layers className="w-3.5 h-3.5" /></span>
+                      <input
+                        id="input-num-units"
+                        type="text"
+                        maxLength={4}
+                        className="w-full pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-800 dark:text-zinc-200 text-sm font-semibold rounded-xl border border-zinc-200 dark:border-zinc-800 outline-none transition-all hover:border-zinc-350 dark:hover:border-zinc-700 focus:border-indigo-500"
+                        placeholder="1"
+                        value={numUnits}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^\d]/g, '');
+                          setNumUnits(val);
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Profit Goal Type Selector */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider font-sans">
+                      Profit Goal Type
+                    </span>
+                    <div className="grid grid-cols-2 p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-xl border border-zinc-200/55 dark:border-zinc-850">
+                      <button
+                        type="button"
+                        onClick={() => setProfitType('fixed')}
+                        className={`py-1.5 text-xs font-semibold rounded-lg font-sans transition-all cursor-pointer ${
+                          profitType === 'fixed'
+                            ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                        }`}
+                      >
+                        Fixed Amount ($)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProfitType('percent')}
+                        className={`py-1.5 text-xs font-semibold rounded-lg font-sans transition-all cursor-pointer ${
+                          profitType === 'percent'
+                            ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                        }`}
+                      >
+                        Percentage (%)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Desired Monthly Profit */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider font-sans font-semibold">
+                      Desired Monthly Profit
+                    </span>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 text-zinc-400">
+                        {profitType === 'fixed' ? <DollarSign className="w-3.5 h-3.5" /> : <Percent className="w-3.5 h-3.5" />}
+                      </span>
+                      <input
+                        id="input-desired-profit"
+                        type="text"
+                        className="w-full pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-800 dark:text-zinc-200 text-sm font-semibold rounded-xl border border-zinc-200 dark:border-zinc-800 outline-none transition-all hover:border-zinc-350 dark:hover:border-zinc-700 focus:border-indigo-500"
+                        placeholder={profitType === 'fixed' ? "0.00" : "0.0"}
+                        value={desiredProfitValue}
+                        onChange={(e) => setDesiredProfitValue(handleNumericFilter(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
             {/* Results Cards (Grid Columns) - occupies 7 Layout Rows */}
             <div className="lg:col-span-7 flex flex-col gap-6 w-full">
               {/* Cards Grid Grid */}
@@ -575,6 +784,121 @@ export default function App() {
                     </strong>
                     <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">
                       Principal + Interest paid
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Comprehensive Monthly Budget Breakdown (Feature 1) */}
+              <div className="bg-gradient-to-br from-indigo-50/50 to-white dark:from-zinc-950 dark:to-zinc-900 border border-indigo-100/50 dark:border-zinc-800 rounded-3xl p-6 shadow-xs flex flex-col gap-5">
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-indigo-500" />
+                    Comprehensive Monthly Cost Breakdown
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                    Your complete payments when including taxes, insurance, and core principal payment.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Monthly Taxes */}
+                  <div className="bg-white/60 dark:bg-zinc-800/20 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <span className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Property Taxes</span>
+                    <strong id="result-monthly-taxes" className="text-lg font-bold text-zinc-800 dark:text-zinc-200 block mt-1 font-mono">
+                      {formatDollar(taxMonthly)}
+                    </strong>
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium mt-0.5 block font-mono">
+                      {formatDollar(taxYearlyNum)}/year
+                    </span>
+                  </div>
+
+                  {/* Monthly Insurance */}
+                  <div className="bg-white/60 dark:bg-zinc-800/20 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <span className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Home Insurance</span>
+                    <strong id="result-monthly-insurance" className="text-lg font-bold text-zinc-800 dark:text-zinc-200 block mt-1 font-mono">
+                      {formatDollar(insuranceMonthly)}
+                    </strong>
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium mt-0.5 block font-mono">
+                      {formatDollar(insYearlyNum)}/year
+                    </span>
+                  </div>
+
+                  {/* Mortgage Installment */}
+                  <div className="bg-white/60 dark:bg-zinc-800/20 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <span className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Mortgage Only</span>
+                    <strong className="text-lg font-bold text-zinc-800 dark:text-zinc-200 block mt-1 font-mono">
+                      {formatDollar(mortgagePayment)}
+                    </strong>
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium mt-0.5 block">
+                      Principal &amp; Interest
+                    </span>
+                  </div>
+                </div>
+
+                {/* Total Monthly Cost highlight line */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-indigo-500/10 dark:bg-indigo-500/5 border border-indigo-500/20 rounded-2xl gap-3">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Total Monthly Cost</span>
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-sans mt-0.5">
+                      Mortgage ({formatDollar(mortgagePayment)}) + Taxes ({formatDollar(taxMonthly)}) + Insurance ({formatDollar(insuranceMonthly)})
+                    </span>
+                  </div>
+                  <strong id="result-total-monthly-cost" className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                    {formatDollar(totalMonthlyCost)}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Multi-Unit Rental Yield & Profits Analyzer (Feature 2) */}
+              <div className="bg-gradient-to-br from-emerald-50/50 to-white dark:from-zinc-950 dark:to-zinc-900 border border-emerald-100/50 dark:border-zinc-800 rounded-3xl p-6 shadow-xs flex flex-col gap-5">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                      <Building className="w-4 h-4 text-emerald-500" />
+                      Multi-Unit Rent &amp; Profit Yield Analyzer
+                    </h3>
+                    <span id="result-units-badge" className="text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-200/40">
+                      {unitsCount} {unitsCount === 1 ? 'Unit' : 'Units'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                    Detailed pricing rules needed to cover all bills and achieve set profit margin yields.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Rent Goal Breakdown Info Box */}
+                  <div className="bg-white/60 dark:bg-zinc-800/20 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 flex flex-col gap-2.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-zinc-500 dark:text-zinc-400 font-medium">Monthly Cost:</span>
+                      <span className="font-bold font-mono text-zinc-800 dark:text-zinc-200">{formatDollar(totalMonthlyCost)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-zinc-500 dark:text-zinc-400 font-medium">Desired Profit:</span>
+                      <span id="result-desired-profit-amount" className="font-bold font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        + {formatDollar(desiredMonthlyProfit)}
+                        {profitType === 'percent' && (
+                          <span className="text-[9px] text-zinc-400 font-normal">
+                            ({profitVal}%)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="border-t border-dashed border-zinc-200 dark:border-zinc-850 pt-2 flex justify-between items-center text-xs">
+                      <span className="font-semibold text-zinc-900 dark:text-white capitalize">Required Rent (Total):</span>
+                      <span id="result-required-total-rent" className="font-extrabold font-mono text-zinc-900 dark:text-white">{formatDollar(requiredTotalRent)}</span>
+                    </div>
+                  </div>
+
+                  {/* Rent Per Unit Highlight Box */}
+                  <div className="bg-emerald-500/10 dark:bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/20 flex flex-col justify-center items-center text-center">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Required Rent Per Unit</span>
+                    <strong id="result-rent-per-unit" className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1 font-mono">
+                      {formatDollar(requiredRentPerUnit)}
+                    </strong>
+                    <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-medium mt-1">
+                      Required Total ({formatDollar(requiredTotalRent)}) ÷ {unitsCount} Units
                     </span>
                   </div>
                 </div>
