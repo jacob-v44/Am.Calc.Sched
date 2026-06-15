@@ -1,0 +1,6 @@
+{
+  "name": "Amortization Calculator",
+  "description": "Calculate loan payments, generate monthly amortization schedules, and easily solve for missing loan variables such as principal, interest rate, term, or payments.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
